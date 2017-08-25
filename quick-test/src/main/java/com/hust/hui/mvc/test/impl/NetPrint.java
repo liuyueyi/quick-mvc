@@ -1,6 +1,7 @@
 package com.hust.hui.mvc.test.impl;
 
 import com.hust.hui.mvc.core.annotation.type.Service;
+import com.hust.hui.mvc.test.LogDot;
 import com.hust.hui.mvc.test.api.IPrint;
 
 /**
@@ -8,8 +9,16 @@ import com.hust.hui.mvc.test.api.IPrint;
  */
 @Service("internetPrint")
 public class NetPrint implements IPrint {
+
     @Override
+    @LogDot
     public void print(String msg) {
         System.out.println("net print! msg: " + msg);
+        privatePrint(msg);
+    }
+
+
+    private void privatePrint(String msg) {
+        System.out.println("inner private print msg: " + msg);
     }
 }

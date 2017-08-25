@@ -1,4 +1,4 @@
-package com.hust.hui.mvc.core.annotation.method;
+package com.hust.hui.mvc.core.aop.anno;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
@@ -10,5 +10,6 @@ import java.lang.annotation.Target;
  */
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.RUNTIME)
-public @interface Before {
+public @interface After {
+    Class value();
 }

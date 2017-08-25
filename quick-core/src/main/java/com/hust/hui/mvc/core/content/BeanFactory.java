@@ -2,8 +2,17 @@ package com.hust.hui.mvc.core.content;
 
 import com.hust.hui.mvc.core.annotation.field.Autowired;
 import com.hust.hui.mvc.core.annotation.type.Bean;
+import com.hust.hui.mvc.core.aop.anno.After;
+import com.hust.hui.mvc.core.aop.anno.Around;
+import com.hust.hui.mvc.core.aop.anno.Aspect;
+import com.hust.hui.mvc.core.aop.anno.Before;
+import com.hust.hui.mvc.core.aop.process.AfterProcess;
+import com.hust.hui.mvc.core.aop.process.AroundProcess;
+import com.hust.hui.mvc.core.aop.process.BeforeProcess;
+import com.hust.hui.mvc.core.aop.process.ProcessCollect;
 import com.hust.hui.mvc.core.exception.BeanAlreadyDefinedException;
 import com.hust.hui.mvc.core.exception.BeanNotFoundException;
+import com.hust.hui.mvc.core.proxy.CglibProxyFactory;
 import com.hust.hui.mvc.core.util.ConfUtil;
 import com.hust.hui.mvc.core.util.StrUtil;
 import org.apache.commons.lang3.StringUtils;
@@ -58,6 +67,10 @@ public class BeanFactory {
         loadScanClass(pkg);
 
 
+        // instance aspect and maintain aspect Map
+        instanceAspect();
+
+
         // instance autowired bean
         instanceBean();
 
@@ -70,6 +83,78 @@ public class BeanFactory {
     private Set<Class<?>> loadScanClass(String path) throws IOException {
         beanClasses = ConfUtil.loadScanClasses(path);
         return beanClasses;
+    }
+
+
+    /**
+     * 自定义注解 及 切该注解的所有切面的映射关系
+     * <p>
+     * key 为切面拦截的自定义注解的class对象
+     * value 为该注解所对应的所有切面集合
+     */
+    private Map<Class, ProcessCollect> aspectAnoMap = new ConcurrentHashMap<>();
+
+
+    private void instanceAspect() throws IllegalAccessException, InstantiationException {
+        clzBeanMap = new ConcurrentHashMap<>();
+        Object aspect;
+        for (Class clz : beanClasses) {
+            if (!clz.isAnnotationPresent(Aspect.class)) {
+                continue;
+            }
+
+            aspect = clz.newInstance();
+
+
+            // 将aspect 丢入bean Map中， 因此aspect也支持ioc
+            clzBeanMap.put(clz, aspect);
+
+            // 扫描切面的方法
+            Class ano;
+            ProcessCollect processCollect;
+            Method[] methods = clz.getDeclaredMethods();
+            for (Method method : methods) {
+                Before before = method.getAnnotation(Before.class);
+                if (before != null) {
+                    BeforeProcess beforeProcess = new BeforeProcess();
+                    beforeProcess.setAspect(aspect);
+                    beforeProcess.setMethod(method);
+
+                    ano = before.value();
+                    processCollect = aspectAnoMap.computeIfAbsent(ano, k -> new ProcessCollect());
+                    processCollect.addBeforeProcess(beforeProcess);
+                }
+
+
+                After after = method.getAnnotation(After.class);
+                if (after != null) {
+                    AfterProcess afterProcess = new AfterProcess();
+                    afterProcess.setAspect(aspect);
+                    afterProcess.setMethod(method);
+
+
+                    ano = after.value();
+                    processCollect = aspectAnoMap.computeIfAbsent(ano, k -> new ProcessCollect());
+                    processCollect.addAfterProcess(afterProcess);
+                }
+
+
+                Around around = method.getAnnotation(Around.class);
+                if (around != null) {
+                    AroundProcess aroundProcess = new AroundProcess();
+                    aroundProcess.setAspect(aspect);
+                    aroundProcess.setMethod(method);
+
+                    ano = around.value();
+                    processCollect = aspectAnoMap.computeIfAbsent(ano, k -> new ProcessCollect());
+                    processCollect.addAroundProcess(aroundProcess);
+                }
+
+            }
+        }
+
+
+        AspectHolder.getInstance().processCollectMap = aspectAnoMap;
     }
 
 
@@ -126,7 +211,9 @@ public class BeanFactory {
                     }
 
 
-                    tmpBean = clz.newInstance();
+                    tmpBean = instanceClz(clz);
+
+
                     tmpClzMap.put(clz, tmpBean);
                     clzBeanMap.put(clz, tmpBean);
                     nameBeanMap.put(tmpBeanName, tmpClzMap);
@@ -140,6 +227,31 @@ public class BeanFactory {
 
 
     /**
+     * 根据class创建实例 or 代理
+     *
+     * @param clz
+     * @return
+     * @throws IllegalAccessException
+     * @throws InstantiationException
+     */
+    private Object instanceClz(Class clz) throws IllegalAccessException, InstantiationException {
+        Method[] methods = clz.getMethods();
+
+        Annotation[] anos;
+        for (Method method : methods) {
+            anos = method.getAnnotations();
+            for (Annotation a : anos) {
+                if (aspectAnoMap.containsKey(a.annotationType())) {
+                    return CglibProxyFactory.getProxy(clz);
+                }
+            }
+        }
+
+        return clz.newInstance();
+    }
+
+
+    /**
      * 依赖注入
      */
     private void ioc() throws IllegalAccessException {
@@ -147,7 +259,7 @@ public class BeanFactory {
         Field[] fields;
         String beanName;
         Object bean;
-        for (Object obj : nameBeanMap.values()) {
+        for (Object obj : clzBeanMap.values()) {
             fields = obj.getClass().getDeclaredFields();
             for (Field field : fields) {
                 if (!field.isAnnotationPresent(Autowired.class)) {
@@ -157,14 +269,14 @@ public class BeanFactory {
                 Autowired autowired = field.getAnnotation(Autowired.class);
                 beanName = StringUtils.isBlank(autowired.value()) ?
                         StrUtil.lowerFirstChar(field.getName()) : autowired.value();
-                bean = nameBeanMap.get(beanName);
+                bean = getBeanOfType(beanName, field.getType());
 
                 if (bean == null) {
                     throw new BeanNotFoundException("bean: " + beanName + " not found! bean class: " + field.getClass().getName());
                 }
 
                 field.setAccessible(true);
-                field.set(obj, nameBeanMap.get(beanName));
+                field.set(obj, bean);
             }
         }
     }
@@ -192,6 +304,27 @@ public class BeanFactory {
 
 
     @SuppressWarnings("unchecked")
+    public <T> T getBeanOfType(String name, Class<T> type) {
+        if (!nameBeanMap.containsKey(name)) {
+            return null;
+        }
+
+        Map<Class, Object> map = nameBeanMap.get(name);
+        Class[] interfaces;
+        for (Class clz : map.keySet()) {
+            interfaces = clz.getInterfaces();
+            for (Class i : interfaces) {
+                if (i == type) {
+                    return (T) map.get(clz);
+                }
+            }
+        }
+
+        return null;
+    }
+
+
+    @SuppressWarnings("unchecked")
     public <T> T getBeanOfType(Class<T> clz) {
         return (T) clzBeanMap.get(clz);
     }
@@ -204,12 +337,13 @@ public class BeanFactory {
 
     /**
      * 运行后动态装载自定义生成的bean
+     *
      * @param name
      * @param bean
      * @return
      */
     public boolean registerBean(String name, Object bean) {
-        Map<Class, Object>  clzMap = nameBeanMap.get(name);
+        Map<Class, Object> clzMap = nameBeanMap.get(name);
         if (clzMap == null) {
             clzMap = new ConcurrentHashMap<>();
         }
@@ -220,6 +354,7 @@ public class BeanFactory {
         }
 
 
+        clzBeanMap.put(bean.getClass(), bean);
         nameBeanMap.put(name, clzMap);
         return true;
     }
