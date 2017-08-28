@@ -1,7 +1,7 @@
 package com.hust.hui.mvc.test.impl;
 
 import com.hust.hui.mvc.core.annotation.type.Service;
-import com.hust.hui.mvc.test.LogDot;
+import com.hust.hui.mvc.test.aspect.LogDot;
 import com.hust.hui.mvc.test.api.IPrint;
 
 /**

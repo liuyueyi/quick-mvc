@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
  * Created by yihui on 2017/8/23.
  */
 @Data
-public class AfterProcess {
+public class AfterProcess implements IAopProcess {
 
     private Object aspect;
 
@@ -35,5 +35,4 @@ public class AfterProcess {
             method.invoke(aspect, joinPoint);
         }
     }
-
 }

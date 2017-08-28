@@ -12,6 +12,7 @@ import org.apache.commons.collections4.CollectionUtils;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,7 +31,7 @@ public class CglibProxy implements MethodInterceptor {
 
         processBeforeAdvice(joinPoint);
 
-        Object result = processAround(joinPoint, methodProxy);
+        Object result = processAroundAdvice(joinPoint, methodProxy);
 
         processAfterAdvice(joinPoint, result);
         return result;
@@ -38,16 +39,11 @@ public class CglibProxy implements MethodInterceptor {
 
 
     private void processBeforeAdvice(JoinPoint joinPoint) {
-        String methodName = joinPoint.getMethod().getName();
-        if (!("print".equalsIgnoreCase(methodName) || "add".equalsIgnoreCase(methodName))) {
-            return;
-        }
-
-        List<BeforeProcess> beforeList = null;
+        List<BeforeProcess> beforeList = new ArrayList<>();
         Annotation[] anos = joinPoint.getMethod().getAnnotations();
-        for (Annotation ano: anos) {
+        for (Annotation ano : anos) {
             if (AspectHolder.getInstance().processCollectMap.containsKey(ano.annotationType())) {
-                beforeList = AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getBeforeList();
+                beforeList.addAll(AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getBeforeList());
             }
         }
 
@@ -57,7 +53,7 @@ public class CglibProxy implements MethodInterceptor {
 
 
         BeforeProcess temp;
-        for (BeforeProcess b: beforeList) {
+        for (BeforeProcess b : beforeList) {
             temp = new BeforeProcess(b);
             temp.setJoinPoint(joinPoint);
             try {
@@ -70,27 +66,21 @@ public class CglibProxy implements MethodInterceptor {
 
 
     private void processAfterAdvice(JoinPoint joinPoint, Object result) {
-        String methodName = joinPoint.getMethod().getName();
-        if (!("print".equalsIgnoreCase(methodName) || "add".equalsIgnoreCase(methodName))) {
-            return;
-        }
-
-
-        List<AfterProcess> afterList = null;
+        List<AfterProcess> afterList = new ArrayList<>();
         Annotation[] anos = joinPoint.getMethod().getAnnotations();
-        for (Annotation ano: anos) {
+        for (Annotation ano : anos) {
             if (AspectHolder.getInstance().processCollectMap.containsKey(ano.annotationType())) {
-                afterList = AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getAfterList();
+                afterList.addAll(AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getAfterList());
             }
         }
 
-        if(CollectionUtils.isEmpty(afterList)) {
+        if (CollectionUtils.isEmpty(afterList)) {
             return;
         }
 
 
         AfterProcess temp;
-        for(AfterProcess f: afterList) {
+        for (AfterProcess f : afterList) {
             temp = new AfterProcess(f);
             temp.setJoinPoint(joinPoint);
             temp.setResult(result);
@@ -104,37 +94,29 @@ public class CglibProxy implements MethodInterceptor {
     }
 
 
-    private Object processAround(JoinPoint joinPoint, MethodProxy proxy) throws Throwable {
+    private Object processAroundAdvice(JoinPoint joinPoint, MethodProxy proxy) throws Throwable {
         ProceedingJoinPoint proceddingJoinPoint = new ProceedingJoinPoint();
         proceddingJoinPoint.setArgs(joinPoint.getArgs());
         proceddingJoinPoint.setMethod(joinPoint.getMethod());
         proceddingJoinPoint.setObj(joinPoint.getObj());
         proceddingJoinPoint.setProxy(proxy);
 
-
-        String methodName = joinPoint.getMethod().getName();
-        if (!("print".equalsIgnoreCase(methodName) || "add".equalsIgnoreCase(methodName))) {
-            return proxy.invokeSuper(joinPoint.getObj(), joinPoint.getArgs());
-        }
-
-
-
-        List<AroundProcess> aroundList = null;
+        List<AroundProcess> aroundList = new ArrayList<>();
         Annotation[] anos = joinPoint.getMethod().getAnnotations();
-        for (Annotation ano: anos) {
+        for (Annotation ano : anos) {
             if (AspectHolder.getInstance().processCollectMap.containsKey(ano.annotationType())) {
-                aroundList = AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getAroundList();
+                aroundList.addAll(AspectHolder.getInstance().processCollectMap.get(ano.annotationType()).getAroundList());
             }
         }
 
-        if(CollectionUtils.isEmpty(aroundList)) {
+        if (CollectionUtils.isEmpty(aroundList)) {
             return proxy.invokeSuper(joinPoint.getObj(), joinPoint.getArgs());
         }
 
 
         Object result = null;
         AroundProcess temp;
-        for(AroundProcess f: aroundList) {
+        for (AroundProcess f : aroundList) {
             temp = new AroundProcess(f);
             temp.setJoinPoint(proceddingJoinPoint);
 

@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
  * Created by yihui on 2017/8/23.
  */
 @Data
-public class AroundProcess {
+public class AroundProcess implements IAopProcess {
 
     private Object aspect;
 

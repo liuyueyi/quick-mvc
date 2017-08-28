@@ -1,4 +1,4 @@
-package com.hust.hui.mvc.test;
+package com.hust.hui.mvc.test.aspect;
 
 /**
  * Created by yihui on 2017/8/25.

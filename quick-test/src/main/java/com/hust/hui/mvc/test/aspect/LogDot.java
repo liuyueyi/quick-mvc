@@ -1,4 +1,4 @@
-package com.hust.hui.mvc.test;
+package com.hust.hui.mvc.test.aspect;
 
 import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
