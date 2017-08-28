@@ -10,13 +10,18 @@ import java.lang.reflect.Method;
  * Created by yihui on 2017/8/23.
  */
 @Data
-public class AroundProcess implements IAopProcess {
+public class AroundProcess implements IAopProcess, Comparable<AroundProcess> {
 
     private Object aspect;
 
     private Method method;
 
     private ProceedingJoinPoint joinPoint;
+
+    /**
+     * 优先级
+     */
+    private int order;
 
     public AroundProcess() {
     }
@@ -28,5 +33,10 @@ public class AroundProcess implements IAopProcess {
 
     public Object process() throws InvocationTargetException, IllegalAccessException {
         return method.invoke(aspect, joinPoint);
+    }
+
+    @Override
+    public int compareTo(AroundProcess o) {
+        return order - o.getOrder();
     }
 }

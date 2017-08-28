@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
  * Created by yihui on 2017/8/23.
  */
 @Data
-public class AfterProcess implements IAopProcess {
+public class AfterProcess implements IAopProcess, Comparable<AfterProcess> {
 
     private Object aspect;
 
@@ -19,6 +19,11 @@ public class AfterProcess implements IAopProcess {
     private JoinPoint joinPoint;
 
     private Object result;
+
+    /**
+     * 优先级
+     */
+    private int order;
 
     public AfterProcess() {
     }
@@ -34,5 +39,10 @@ public class AfterProcess implements IAopProcess {
         } else {
             method.invoke(aspect, joinPoint);
         }
+    }
+
+    @Override
+    public int compareTo(AfterProcess o) {
+        return order - o.getOrder();
     }
 }

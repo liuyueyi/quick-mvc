@@ -10,7 +10,7 @@ import java.lang.reflect.Method;
  * Created by yihui on 2017/8/23.
  */
 @Data
-public class BeforeProcess implements IAopProcess {
+public class BeforeProcess implements IAopProcess, Comparable<BeforeProcess> {
 
     /**
      * 切面类
@@ -28,6 +28,12 @@ public class BeforeProcess implements IAopProcess {
      * 被切面拦截的切点信息
      */
     private JoinPoint joinPoint;
+
+
+    /**
+     * 优先级
+     */
+    private int order;
 
     public BeforeProcess() {
     }
@@ -49,4 +55,8 @@ public class BeforeProcess implements IAopProcess {
         method.invoke(aspect, joinPoint);
     }
 
+    @Override
+    public int compareTo(BeforeProcess o) {
+        return order - o.getOrder();
+    }
 }

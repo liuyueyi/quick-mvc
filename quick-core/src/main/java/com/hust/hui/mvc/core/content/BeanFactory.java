@@ -22,6 +22,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -119,6 +120,7 @@ public class BeanFactory {
                     BeforeProcess beforeProcess = new BeforeProcess();
                     beforeProcess.setAspect(aspect);
                     beforeProcess.setMethod(method);
+                    beforeProcess.setOrder(before.order());
 
                     ano = before.value();
                     processCollect = aspectAnoMap.computeIfAbsent(ano, k -> new ProcessCollect());
@@ -131,6 +133,7 @@ public class BeanFactory {
                     AfterProcess afterProcess = new AfterProcess();
                     afterProcess.setAspect(aspect);
                     afterProcess.setMethod(method);
+                    afterProcess.setOrder(after.order());
 
 
                     ano = after.value();
@@ -144,6 +147,7 @@ public class BeanFactory {
                     AroundProcess aroundProcess = new AroundProcess();
                     aroundProcess.setAspect(aspect);
                     aroundProcess.setMethod(method);
+                    aroundProcess.setOrder(around.order());
 
                     ano = around.value();
                     processCollect = aspectAnoMap.computeIfAbsent(ano, k -> new ProcessCollect());
@@ -153,6 +157,13 @@ public class BeanFactory {
             }
         }
 
+
+        // 排序
+        for (ProcessCollect collect: aspectAnoMap.values()) {
+            Collections.sort(collect.getBeforeList());
+            Collections.sort(collect.getAfterList());
+            Collections.sort(collect.getAroundList());
+        }
 
         AspectHolder.getInstance().processCollectMap = aspectAnoMap;
     }

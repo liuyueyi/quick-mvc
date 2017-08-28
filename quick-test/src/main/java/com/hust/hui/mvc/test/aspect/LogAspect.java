@@ -16,7 +16,7 @@ import java.util.Arrays;
 @Aspect
 public class LogAspect {
 
-    @Before(LogDot.class)
+    @Before(value = LogDot.class, order = 1)
     public void before1(JoinPoint joinPoint) {
         System.out.println("before1! point: " + Arrays.asList(joinPoint.getArgs()));
     }
@@ -28,10 +28,10 @@ public class LogAspect {
 
     @After(LogDot.class)
     public void after1(JoinPoint joinPoint) {
-        System.out.println("after! point: " + Arrays.asList(joinPoint.getArgs()));
+        System.out.println("after1! point: " + Arrays.asList(joinPoint.getArgs()));
     }
 
-    @After(LogDot.class)
+    @After(value = LogDot.class, order = 2)
     public void after2(JoinPoint joinPoint) {
         System.out.println("after2! point: " + Arrays.asList(joinPoint.getArgs()));
     }
